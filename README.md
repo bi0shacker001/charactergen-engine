@@ -1,27 +1,54 @@
 # CharacterGen Engine
 
-CharacterGen Engine is a persistent world engine for characters who can continue to grow after their initial creation. It is intended to support as many character-engine sources as possible—including game engines, prescripted characters, LLMs, and future technologies for dynamic character expansion.
+## Build requirements
 
-The engine maintains a scoped, persistent world in which relevant characters occupy places, perceive events, interact through available communication channels, form memories and opinions, develop relationships, and become more fully simulated as they move closer to the player's life.
+- Rust 1.97.1 (the repository toolchain file selects it automatically)
+- Node.js 22 or newer for the host console
+- A C/C++ build toolchain supported by Rust on the target platform
 
-The project is currently in its specification phase. See [SPEC.md](SPEC.md) for the draft product and architecture specification.
+On Windows, install Visual Studio Build Tools with the Desktop development with C++ workload.
 
-## Status
+## Build and test the server
 
-- Public architectural testbed
-- Self-hosted, single-user first
-- Server/client design
-- Implementation language and embedded persistence engine are proposed, not yet final
+```bash
+cargo build --workspace
+cargo test --workspace
+```
 
-## Principles
+Run the development server:
 
-- Characters exist in a world, not only in prompts.
-- Narrators move the world forward without dictating every character's response.
-- The simulation is scoped around relevance rather than attempting to model everyone.
-- Established facts survive changes in models, providers, and presentation clients.
-- Character sources are interchangeable behind explicit capability contracts.
-- Imported material retains provenance and remains distinguishable from generated additions.
+```bash
+cargo run -p charactergen-server
+```
 
-## License
+The server listens on `127.0.0.1:8787`. Override this with `CHARACTERGEN_BIND`.
 
-No license has been selected yet. Until one is added, the repository is publicly visible but normal copyright restrictions apply.
+## Build and run the host console
+
+```bash
+cd web
+pnpm install --frozen-lockfile
+pnpm build
+```
+
+For development:
+
+```bash
+pnpm dev
+```
+
+The console uses `http://127.0.0.1:8787/api` by default. Set `VITE_API_BASE` to use another server.
+
+## Repository layout
+
+```text
+crates/charactergen-core       Canonical domain types and extension contracts
+crates/charactergen-importers  Source-data staging adapters
+crates/charactergen-providers  Character-engine and model-provider adapters
+crates/charactergen-server     Authoritative HTTP server
+web/                           Browser host console
+```
+
+## Automated builds
+
+Pull requests and pushes to `main` run Rust formatting, linting, tests, and the web production build. Tags beginning with `v` build release server binaries for Linux, Windows, and macOS and attach them to a GitHub release.

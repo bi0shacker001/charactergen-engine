@@ -1,0 +1,13 @@
+[package]
+name = "charactergen-core"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uuid.workspace = true

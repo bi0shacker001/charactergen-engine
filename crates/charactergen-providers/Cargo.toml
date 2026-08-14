@@ -1,0 +1,11 @@
+[package]
+name = "charactergen-providers"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+charactergen-core = { path = "../charactergen-core" }
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true

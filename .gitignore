@@ -1,0 +1,9 @@
+/target/
+/web/node_modules/
+/web/dist/
+/web/*.tsbuildinfo
+*.db/
+*.world/
+.env
+.env.*
+!.env.example
