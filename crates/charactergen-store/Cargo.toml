@@ -1,0 +1,15 @@
+[package]
+name = "charactergen-store"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+charactergen-core = { path = "../charactergen-core" }
+rocksdb.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

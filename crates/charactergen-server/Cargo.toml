@@ -7,6 +7,7 @@ repository.workspace = true
 [dependencies]
 axum.workspace = true
 charactergen-core = { path = "../charactergen-core" }
+charactergen-store = { path = "../charactergen-store" }
 charactergen-providers = { path = "../charactergen-providers" }
 serde.workspace = true
 serde_json.workspace = true
@@ -15,3 +16,6 @@ tower-http.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

@@ -4,17 +4,17 @@ use axum::{
     http::StatusCode,
     routing::get,
 };
-use charactergen_core::{Character, CharacterId, CharacterLifecycle, CharacterPatch};
+use charactergen_core::{Character, CharacterId, CharacterPatch, CharacterStore, StoreError};
+use charactergen_store::RocksCharacterStore;
 use serde::Deserialize;
-use std::{collections::HashMap, sync::Arc};
-use tokio::sync::RwLock;
+use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 struct AppState {
-    characters: Arc<RwLock<HashMap<CharacterId, Character>>>,
+    characters: Arc<dyn CharacterStore>,
 }
 
 #[derive(Deserialize)]
@@ -32,7 +32,12 @@ async fn main() {
             EnvFilter::try_from_default_env().unwrap_or_else(|_| "charactergen_server=info".into()),
         )
         .init();
-    let app = app(AppState::default());
+    let data_path =
+        std::env::var("CHARACTERGEN_DATA_PATH").unwrap_or_else(|_| "./charactergen.world".into());
+    let store = RocksCharacterStore::open(&data_path).expect("open persistent world store");
+    let app = app(AppState {
+        characters: Arc::new(store),
+    });
     let address = std::env::var("CHARACTERGEN_BIND").unwrap_or_else(|_| "127.0.0.1:8787".into());
     let listener = tokio::net::TcpListener::bind(&address)
         .await
@@ -64,28 +69,33 @@ fn app(state: AppState) -> Router {
 }
 
 async fn health() -> Json<serde_json::Value> {
-    Json(serde_json::json!({ "status": "ok", "persistence": "in_memory_development" }))
+    Json(serde_json::json!({ "status": "ok", "persistence": "rocksdb" }))
 }
 
-async fn list_characters(State(state): State<AppState>) -> Json<Vec<Character>> {
-    let mut characters: Vec<_> = state.characters.read().await.values().cloned().collect();
-    characters.sort_by(|left, right| left.name.cmp(&right.name));
-    Json(characters)
+async fn list_characters(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<Character>>, StatusCode> {
+    state
+        .characters
+        .list()
+        .await
+        .map(Json)
+        .map_err(store_status)
 }
 
 async fn create_character(
     State(state): State<AppState>,
     Json(input): Json<CreateCharacter>,
-) -> (StatusCode, Json<Character>) {
+) -> Result<(StatusCode, Json<Character>), StatusCode> {
     let mut character = Character::stub(input.name);
     character.summary = input.summary;
     character.engine_assignment = input.engine_assignment;
     state
         .characters
-        .write()
+        .create(character)
         .await
-        .insert(character.id, character.clone());
-    (StatusCode::CREATED, Json(character))
+        .map(|created| (StatusCode::CREATED, Json(created)))
+        .map_err(store_status)
 }
 
 async fn get_character(
@@ -94,10 +104,9 @@ async fn get_character(
 ) -> Result<Json<Character>, StatusCode> {
     state
         .characters
-        .read()
+        .get(CharacterId(id))
         .await
-        .get(&CharacterId(id))
-        .cloned()
+        .map_err(store_status)?
         .map(Json)
         .ok_or(StatusCode::NOT_FOUND)
 }
@@ -107,25 +116,35 @@ async fn update_character(
     Path(id): Path<Uuid>,
     Json(patch): Json<CharacterPatch>,
 ) -> Result<Json<Character>, StatusCode> {
-    let mut characters = state.characters.write().await;
-    let character = characters
-        .get_mut(&CharacterId(id))
-        .ok_or(StatusCode::NOT_FOUND)?;
-    patch.apply(character).map_err(|_| StatusCode::CONFLICT)?;
-    Ok(Json(character.clone()))
+    state
+        .characters
+        .update(CharacterId(id), patch)
+        .await
+        .map(Json)
+        .map_err(store_status)
 }
 
 async fn archive_character(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, StatusCode> {
-    let mut characters = state.characters.write().await;
-    let character = characters
-        .get_mut(&CharacterId(id))
-        .ok_or(StatusCode::NOT_FOUND)?;
-    character.lifecycle = CharacterLifecycle::Archived;
-    character.revision += 1;
-    Ok(StatusCode::NO_CONTENT)
+    state
+        .characters
+        .archive(CharacterId(id))
+        .await
+        .map(|()| StatusCode::NO_CONTENT)
+        .map_err(store_status)
+}
+
+fn store_status(error: StoreError) -> StatusCode {
+    match error {
+        StoreError::NotFound => StatusCode::NOT_FOUND,
+        StoreError::Conflict { .. } => StatusCode::CONFLICT,
+        StoreError::InvalidData(_) | StoreError::Backend(_) => {
+            tracing::error!(%error, "storage operation failed");
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
 }
 
 #[cfg(test)]
@@ -133,9 +152,12 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn new_state_starts_empty() {
-        let state = AppState::default();
-        assert!(state.characters.read().await.is_empty());
+    async fn new_store_starts_empty() {
+        let directory = tempfile::tempdir().unwrap();
+        let state = AppState {
+            characters: Arc::new(RocksCharacterStore::open(directory.path()).unwrap()),
+        };
+        assert!(state.characters.list().await.unwrap().is_empty());
         let _router = app(state);
     }
 }

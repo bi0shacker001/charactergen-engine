@@ -5,6 +5,7 @@
 - Rust 1.97.1 (the repository toolchain file selects it automatically)
 - Node.js 22 or newer for the host console
 - A C/C++ build toolchain supported by Rust on the target platform
+- LLVM/libclang for the embedded RocksDB bindings
 
 On Windows, install Visual Studio Build Tools with the Desktop development with C++ workload.
 
@@ -21,7 +22,8 @@ Run the development server:
 cargo run -p charactergen-server
 ```
 
-The server listens on `127.0.0.1:8787`. Override this with `CHARACTERGEN_BIND`.
+The server listens on `127.0.0.1:8787` and stores its world in `./charactergen.world`.
+Override these with `CHARACTERGEN_BIND` and `CHARACTERGEN_DATA_PATH`.
 
 ## Build and run the host console
 
@@ -46,6 +48,7 @@ crates/charactergen-core       Canonical domain types and extension contracts
 crates/charactergen-importers  Source-data staging adapters
 crates/charactergen-providers  Character-engine and model-provider adapters
 crates/charactergen-server     Authoritative HTTP server
+crates/charactergen-store      Embedded persistent storage
 web/                           Browser host console
 ```
 
