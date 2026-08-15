@@ -34,6 +34,13 @@ jobs:
         run: |
           "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $env:GITHUB_ENV
           "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
+      - name: Configure libclang (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          llvm_prefix="$(brew --prefix llvm)"
+          echo "LIBCLANG_PATH=$llvm_prefix/lib" >> "$GITHUB_ENV"
+          echo "DYLD_LIBRARY_PATH=$llvm_prefix/lib" >> "$GITHUB_ENV"
+          echo "$llvm_prefix/bin" >> "$GITHUB_PATH"
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.97.1
