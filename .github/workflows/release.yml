@@ -38,6 +38,7 @@ jobs:
       - name: Configure libclang (macOS)
         if: runner.os == 'macOS'
         run: |
+          brew list llvm >/dev/null 2>&1 || brew install llvm
           llvm_prefix="$(brew --prefix llvm)"
           libclang="$(find "$llvm_prefix" -name libclang.dylib -print -quit)"
           test -n "$libclang"
