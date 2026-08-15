@@ -13,6 +13,7 @@ jobs:
     name: Rust (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
@@ -30,8 +31,11 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           llvm_prefix="$(brew --prefix llvm)"
-          echo "LIBCLANG_PATH=$llvm_prefix/lib" >> "$GITHUB_ENV"
-          echo "DYLD_LIBRARY_PATH=$llvm_prefix/lib" >> "$GITHUB_ENV"
+          libclang="$(find "$llvm_prefix" -name libclang.dylib -print -quit)"
+          test -n "$libclang"
+          libclang_dir="$(dirname "$libclang")"
+          echo "LIBCLANG_PATH=$libclang_dir" >> "$GITHUB_ENV"
+          echo "DYLD_LIBRARY_PATH=$libclang_dir" >> "$GITHUB_ENV"
           echo "$llvm_prefix/bin" >> "$GITHUB_PATH"
       - uses: dtolnay/rust-toolchain@master
         with:
