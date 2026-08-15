@@ -38,14 +38,12 @@ jobs:
       - name: Configure libclang (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew list llvm >/dev/null 2>&1 || brew install llvm
-          llvm_prefix="$(brew --prefix llvm)"
-          libclang="$(find "$llvm_prefix" -name libclang.dylib -print -quit)"
+          developer_dir="$(xcode-select -p)"
+          libclang="$(find "$developer_dir/Toolchains" -name libclang.dylib -print -quit)"
           test -n "$libclang"
           libclang_dir="$(dirname "$libclang")"
           echo "LIBCLANG_PATH=$libclang_dir" >> "$GITHUB_ENV"
           echo "DYLD_LIBRARY_PATH=$libclang_dir" >> "$GITHUB_ENV"
-          echo "$llvm_prefix/bin" >> "$GITHUB_PATH"
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.97.1
